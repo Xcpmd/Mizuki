@@ -25,7 +25,16 @@ html.is-animating .transition-swup-fade {
     animation-fill-mode: forwards;
 }
 #navbar {
-    animation-delay: 0ms
+    animation-delay: 0ms;
+    backdrop-filter: blur(12px);
+    border-radius: 0px 0px var(--radius-large) var(--radius-large);
+    width: 100%;
+    @apply drop-shadow-md
+}
+#navbar:hover {
+    animation-delay: 0ms;
+    border-radius: 0px 0px var(--radius-large) var(--radius-large);
+    @apply drop-shadow-md
 }
 #sidebar {
     animation-delay: 0ms

@@ -7,7 +7,7 @@ html {
 
 @layer components {
     .card-base {
-        @apply rounded-[var(--radius-large)] overflow-hidden bg-[var(--card-bg)] transition;
+        @apply rounded-[var(--radius-large)] overflow-hidden bg-white bg-opacity-70 backdrop-blur-lg transition dark:bg-black;
     }
     h1, h2, h3, h4, h5, h6, p, a, span, li, ul, ol, blockquote, code, pre, table, th, td, strong {
         @apply transition;
@@ -26,13 +26,13 @@ html {
         @apply transition rounded-md p-1.5 -m-1.5 expand-animation;
     }
     .float-panel {
-        @apply top-[5.25rem] rounded-[var(--radius-large)] overflow-hidden bg-[var(--float-panel-bg)] transition shadow-xl dark:shadow-none
+        @apply top-[5.25rem] rounded-[var(--radius-large)] overflow-hidden bg-[var(--float-panel-bg)] bg-opacity-20 backdrop-blur-md transition shadow-xl dark:shadow-none
     }
     .float-panel-closed {
         @apply -translate-y-1 opacity-0 pointer-events-none
     }
     .search-panel mark {
-        @apply bg-transparent text-[var(--primary)]
+        @apply bg-transparent text-[var(--primary)] backdrop-blur-md
     }
 
     .btn-card {
@@ -115,6 +115,10 @@ html {
     .btn-regular-dark.success {
         @apply bg-[oklch(0.75_0.14_var(--hue))] dark:bg-[oklch(0.75_0.14_var(--hue))]
     }
+    .banner-bar {
+        @apply bg-opacity-70 dark:bg-opacity-40
+    }
+    
 }
 
 .custom-md img, #post-cover img {
@@ -143,4 +147,60 @@ html {
 
 .collapsed {
     height: var(--collapsedHeight);
+}
+
+#hello {
+    max-width: 600px;
+    width: 80%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-53%, -60%);
+}
+
+#hello {
+    position: center;
+    filter: drop-shadow(4px 5px 10px rgba(0, 0, 0, 0.4)) 
+            drop-shadow(0px -1px 6px rgba(255, 255, 255, 0.2));
+    @apply opacity-60;
+}
+
+#hello.fin {
+    filter: drop-shadow(4px 5px 10px rgba(0, 0, 0, 0.5)) 
+            drop-shadow(-2px -2px 6px rgba(255, 255, 255, 0.3));
+}
+#hello.fin .path-1, 
+#hello.fin .path-2, 
+#hello.fin .path-3 {
+    stroke-dashoffset: 0;
+}
+#hello.fin .path-4 {
+    stroke-width: 18px;
+}
+
+.path {
+    fill: none;
+    stroke-width: 18px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    @apply stroke-white dark:stroke-black;
+}
+.path-1 {
+  stroke-dasharray: 1850 2000;
+  stroke-dashoffset: 1851;
+  transition:stroke-dashoffset 2.5s linear 0s;
+}
+.path-2 {
+  stroke-dasharray: 260 1000;
+  stroke-dashoffset: 261;
+  transition:stroke-dashoffset 0.6s linear 2.7s;
+}
+.path-3 {
+  stroke-dasharray: 100 1000;
+  stroke-dashoffset: 101;
+  transition:stroke-dashoffset 0.6s linear 3.5s;
+}
+.path-4 {
+  stroke-width: 0;
+  transition:stroke-width 0.1s linear 4.7s;
 }

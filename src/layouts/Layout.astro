@@ -249,7 +249,7 @@ const bannerOffset =
 		@apply top-[calc(1rem_-_var(--banner-height-extend))]
 	}
 	.navbar-hidden {
-		@apply opacity-0 -translate-y-16
+		@apply -translate-y-16
 	}
 	
 	/* Water waves animation */
@@ -453,7 +453,7 @@ function initCarousel() {
 	const carouselItems = document.querySelectorAll('.carousel-item');
 	
 	// 根据屏幕尺寸过滤有效的轮播项
-	const isMobile = window.innerWidth < 1024; // lg breakpoint
+	const isMobile = window.innerWidth < (window.innerHeight*0.7) || window.innerWidth < 1024;//1024; // lg breakpoint
 	const validItems = Array.from(carouselItems).filter(item => {
 		if (isMobile) {
 			// 移动端：只显示有mobile图片的项目
@@ -463,6 +463,13 @@ function initCarousel() {
 			return item.querySelector('.hidden.lg\\:block');
 		}
 	});
+
+	function reset() { // 打乱数组
+		for (let i = validItems.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[validItems[i], validItems[j]] = [validItems[j], validItems[i]];
+		}
+	} reset();
 	
 	// Check if carousel is disabled but we have multiple images - show random image
 	if (validItems.length > 1 && !siteConfig.banner.carousel?.enable) {
@@ -889,6 +896,7 @@ window.onresize = () => {
 </script>
 
 <script>
+import $$Component from "@components/ArchivePanel.svelte"
 import PhotoSwipeLightbox from "photoswipe/lightbox"
 import "photoswipe/style.css"
 
@@ -947,5 +955,18 @@ if (window.swup) {
 	setup()
 } else {
 	document.addEventListener("swup:enable", setup)
+
+
+const isMobile = window.innerWidth < 1024;
+
+// hello 播放动画
+function animationStart() {
+	document.getElementById('hello').classList.add('fin');
 }
+
+setTimeout(() => {
+	animationStart();
+}, 1000);
+}
+
 </script>
