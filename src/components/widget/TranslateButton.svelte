@@ -81,13 +81,20 @@ async function changeLanguage(languageCode: string) {
 // 点击外部关闭面板
 function handleClickOutside(event: MouseEvent) {
 	const target = event.target as HTMLElement;
+	
+	// 只有在翻译面板打开时才处理点击外部事件
+	if (!isOpen || !translatePanel) {
+		return;
+	}
+	
+	// 检查点击是否在翻译相关元素内部
 	if (
-		translatePanel &&
 		!translatePanel.contains(target) &&
 		!target.closest("#translate-switch")
 	) {
 		isOpen = false;
 		translatePanel.classList.add("float-panel-closed");
+		// 不阻止事件传播，让其他元素的点击事件正常执行
 	}
 }
 
@@ -134,7 +141,7 @@ onDestroy(() => {
         <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
             {#each languages as lang}
                 <button
-                    class="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--btn-plain-bg-hover)] transition-colors text-left w-full {currentLanguage === lang.code ? 'bg-[var(--btn-plain-bg-hover)] ring-1 ring-[var(--primary)]' : ''}"
+                    class="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--btn-plain-bg-hover)] transition-colors text-left w-full {currentLanguage === lang.code ? 'bg-[var(--btn-plain-bg-hover)] border-1 border-[var(--primary)]' : ''}"
                     on:click={() => changeLanguage(lang.code)}
                 >
                     <span class="text-lg transition text-black/75 dark:text-white/75">{lang.icon}</span>
@@ -154,9 +161,10 @@ onDestroy(() => {
     opacity: 0;
     pointer-events: none;
     transform: translateY(-10px);
+    transition: all 0.2s ease-out;
 }
 
-.float-panel-closed:not(.float-panel-closed) {
+#translate-panel:not(.float-panel-closed) {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);

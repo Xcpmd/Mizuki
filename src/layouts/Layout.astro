@@ -4,7 +4,9 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/700.css";
 
 import ConfigCarrier from "@components/ConfigCarrier.astro";
+import MusicPlayer from "@components/widget/MusicPlayer.svelte";
 import { profileConfig, siteConfig } from "@/config";
+import { widgetConfigs } from "../config";
 import {
 	AUTO_MODE,
 	BANNER_HEIGHT,
@@ -16,9 +18,11 @@ import {
 	PAGE_WIDTH,
 } from "../constants/constants";
 import { defaultFavicons } from "../constants/icon";
-import type { Favicon } from "../types/config";
+import type { Favicon, SakuraConfig } from "../types/config";
 import { pathsEqual, url } from "../utils/url-utils";
 import "katex/dist/katex.css";
+import "../styles/mobile-navbar.css";
+import "../styles/wallpaper-navbar-transparent.css";
 
 interface Props {
 	title?: string;
@@ -38,6 +42,13 @@ const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 // defines global css variables
 // why doing this in Layout instead of GlobalStyles: https://github.com/withastro/astro/issues/6728#issuecomment-1502203757
 const configHue = siteConfig.themeColor.hue;
+
+// 获取导航栏透明模式配置
+const navbarTransparentMode =
+	siteConfig.banner?.navbar?.transparentMode || "semi";
+// 判断是否应该显示顶部高光效果（只在full和semifull模式下显示）
+const shouldShowTopHighlight =
+	navbarTransparentMode === "full" || navbarTransparentMode === "semifull";
 
 // 获取默认banner图片的辅助函数
 const getDefaultBanner = (): string => {
@@ -81,7 +92,9 @@ let pageTitle: string;
 if (title) {
 	pageTitle = `${title} - ${siteConfig.title}`;
 } else {
-	pageTitle = `${siteConfig.title} - ${siteConfig.subtitle}`;
+	pageTitle = siteConfig.subtitle
+		? `${siteConfig.title} - ${siteConfig.subtitle}`
+		: siteConfig.title;
 }
 
 const favicons: Favicon[] =
@@ -103,7 +116,7 @@ const bannerOffset =
 ---
 
 <!DOCTYPE html>
-<html lang={siteLang} class="bg-[var(--page-bg)] transition text-[14px] md:text-[16px]"
+<html lang={siteLang} class="bg-[var(--page-bg)] text-[14px] md:text-[16px]"
 	  data-overlayscrollbars-initialize
 >
 	<head>
@@ -173,6 +186,7 @@ const bannerOffset =
 		}}></style>  <!-- defines global css variables. This will be applied to <html> <body> and some other elements idk why -->
 
 
+
 		<slot name="head"></slot>
 
 		<link rel="alternate" type="application/rss+xml" title={profileConfig.name} href={`${Astro.site}rss.xml`}/>
@@ -180,15 +194,351 @@ const bannerOffset =
 
 
 	</head>
-	<body class=" min-h-screen transition " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner}]}
+	<body class=" min-h-screen " class:list={[{"lg:is-home": isHomePage, "enable-banner": enableBanner}]}
 		  data-overlayscrollbars-initialize
 	>
+		<!-- 页面顶部渐变高光效果 - 只在full和semifull模式下显示 -->
+		{shouldShowTopHighlight && <div class="top-gradient-highlight"></div>}
 		<ConfigCarrier></ConfigCarrier>
 		<slot />
+		
+		<!-- Music Player -->
+		<MusicPlayer client:load />
 
 		<!-- increase the page height during page transition to prevent the scrolling animation from jumping -->
 		<div id="page-height-extend" class="hidden h-[300vh]"></div>
 
+		<!-- Sakura Effect -->
+		{(widgetConfigs.sakura as SakuraConfig)?.enable && (
+			<script define:vars={{ sakuraConfig: widgetConfigs.sakura }}>
+				// 樱花对象类
+				class Sakura {
+					constructor(x, y, s, r, fn, idx, img, limitArray, config) {
+						this.x = x;
+						this.y = y;
+						this.s = s;
+						this.r = r;
+						this.fn = fn;
+						this.idx = idx;
+						this.img = img;
+						this.limitArray = limitArray;
+						this.config = config;
+					}
+
+					draw(cxt) {
+						cxt.save();
+						cxt.translate(this.x, this.y);
+						cxt.rotate(this.r);
+						cxt.drawImage(this.img, 0, 0, 40 * this.s, 40 * this.s);
+						cxt.restore();
+					}
+
+					update() {
+						this.x = this.fn.x(this.x, this.y);
+						this.y = this.fn.y(this.y, this.y);
+						this.r = this.fn.r(this.r);
+
+						// 如果樱花越界，重新调整位置
+						if (
+							this.x > window.innerWidth ||
+							this.x < 0 ||
+							this.y > window.innerHeight ||
+							this.y < 0
+						) {
+							// 如果樱花不做限制
+							if (this.limitArray[this.idx] === -1) {
+								this.resetPosition();
+							}
+							// 否则樱花有限制
+							else {
+								if (this.limitArray[this.idx] > 0) {
+									this.resetPosition();
+									this.limitArray[this.idx]--;
+								}
+							}
+						}
+					}
+
+					resetPosition() {
+						this.r = getRandom('fnr', this.config);
+						if (Math.random() > 0.4) {
+							this.x = getRandom('x', this.config);
+							this.y = 0;
+							this.s = getRandom('s', this.config);
+							this.r = getRandom('r', this.config);
+						} else {
+							this.x = window.innerWidth;
+							this.y = getRandom('y', this.config);
+							this.s = getRandom('s', this.config);
+							this.r = getRandom('r', this.config);
+						}
+					}
+				}
+
+				// 樱花列表类
+				class SakuraList {
+					constructor() {
+						this.list = [];
+					}
+
+					push(sakura) {
+						this.list.push(sakura);
+					}
+
+					update() {
+						for (let i = 0, len = this.list.length; i < len; i++) {
+							this.list[i].update();
+						}
+					}
+
+					draw(cxt) {
+						for (let i = 0, len = this.list.length; i < len; i++) {
+							this.list[i].draw(cxt);
+						}
+					}
+
+					get(i) {
+						return this.list[i];
+					}
+
+					size() {
+						return this.list.length;
+					}
+				}
+
+				// 获取随机值的函数
+				function getRandom(option, config) {
+					let ret;
+					let random;
+
+					switch (option) {
+						case 'x':
+							ret = Math.random() * window.innerWidth;
+							break;
+						case 'y':
+							ret = Math.random() * window.innerHeight;
+							break;
+						case 's':
+							ret = config.size.min + Math.random() * (config.size.max - config.size.min);
+							break;
+						case 'r':
+							ret = Math.random() * 6;
+							break;
+						case 'fnx':
+							random = config.speed.horizontal.min + Math.random() * (config.speed.horizontal.max - config.speed.horizontal.min);
+							ret = function (x, y) {
+								return x + random;
+							};
+							break;
+						case 'fny':
+							random = config.speed.vertical.min + Math.random() * (config.speed.vertical.max - config.speed.vertical.min);
+							ret = function (x, y) {
+								return y + random;
+							};
+							break;
+						case 'fnr':
+							ret = function (r) {
+								return r + config.speed.rotation;
+							};
+							break;
+					}
+					return ret;
+				}
+
+				// 樱花管理器类
+				class SakuraManager {
+					constructor(config) {
+						this.config = config;
+						this.canvas = null;
+						this.ctx = null;
+						this.sakuraList = null;
+						this.animationId = null;
+						this.img = null;
+						this.isRunning = false;
+					}
+
+					// 初始化樱花特效
+					async init() {
+						if (!this.config.enable || this.isRunning) {
+							return;
+						}
+
+						// 创建图片对象
+						this.img = new Image();
+						this.img.src = '/sakura.png'; // 使用樱花图片
+
+						// 等待图片加载完成
+						await new Promise((resolve, reject) => {
+							if (this.img) {
+								this.img.onload = () => resolve();
+								this.img.onerror = () => reject(new Error('Failed to load sakura image'));
+							}
+						});
+
+						this.createCanvas();
+						this.createSakuraList();
+						this.startAnimation();
+						this.isRunning = true;
+					}
+
+					// 创建画布
+					createCanvas() {
+						this.canvas = document.createElement('canvas');
+						this.canvas.height = window.innerHeight;
+						this.canvas.width = window.innerWidth;
+						this.canvas.setAttribute('style', `position: fixed; left: 0; top: 0; pointer-events: none; z-index: ${this.config.zIndex};`);
+						this.canvas.setAttribute('id', 'canvas_sakura');
+						document.body.appendChild(this.canvas);
+						this.ctx = this.canvas.getContext('2d');
+
+						// 监听窗口大小变化
+						window.addEventListener('resize', this.handleResize.bind(this));
+					}
+
+					// 创建樱花列表
+					createSakuraList() {
+						if (!this.img || !this.ctx) return;
+
+						this.sakuraList = new SakuraList();
+						const limitArray = new Array(this.config.sakuraNum).fill(this.config.limitTimes);
+
+						for (let i = 0; i < this.config.sakuraNum; i++) {
+							const randomX = getRandom('x', this.config);
+							const randomY = getRandom('y', this.config);
+							const randomR = getRandom('r', this.config);
+							const randomS = getRandom('s', this.config);
+							const randomFnx = getRandom('fnx', this.config);
+							const randomFny = getRandom('fny', this.config);
+							const randomFnR = getRandom('fnr', this.config);
+
+							const sakura = new Sakura(
+								randomX,
+								randomY,
+								randomS,
+								randomR,
+								{
+									x: randomFnx,
+									y: randomFny,
+									r: randomFnR,
+								},
+								i,
+								this.img,
+								limitArray,
+								this.config
+							);
+
+							sakura.draw(this.ctx);
+							this.sakuraList.push(sakura);
+						}
+					}
+
+					// 开始动画
+					startAnimation() {
+						if (!this.ctx || !this.canvas || !this.sakuraList) return;
+
+						const animate = () => {
+							if (!this.ctx || !this.canvas || !this.sakuraList) return;
+
+							this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+							this.sakuraList.update();
+							this.sakuraList.draw(this.ctx);
+							this.animationId = requestAnimationFrame(animate);
+						};
+
+						this.animationId = requestAnimationFrame(animate);
+					}
+
+					// 处理窗口大小变化
+					handleResize() {
+						if (this.canvas) {
+							this.canvas.width = window.innerWidth;
+							this.canvas.height = window.innerHeight;
+						}
+					}
+
+					// 停止樱花特效
+					stop() {
+						if (this.animationId) {
+							cancelAnimationFrame(this.animationId);
+							this.animationId = null;
+						}
+
+						if (this.canvas) {
+							document.body.removeChild(this.canvas);
+							this.canvas = null;
+						}
+
+						window.removeEventListener('resize', this.handleResize.bind(this));
+						this.isRunning = false;
+					}
+
+					// 切换樱花特效
+					toggle() {
+						if (this.isRunning) {
+							this.stop();
+						} else {
+							this.init();
+						}
+					}
+
+					// 更新配置
+					updateConfig(newConfig) {
+						const wasRunning = this.isRunning;
+						if (wasRunning) {
+							this.stop();
+						}
+						this.config = newConfig;
+						if (wasRunning && newConfig.enable) {
+							this.init();
+						}
+					}
+
+					// 获取运行状态
+					getIsRunning() {
+						return this.isRunning;
+					}
+				}
+
+				// 创建全局樱花管理器实例
+				let globalSakuraManager = null;
+
+				// 初始化樱花特效
+				function initSakura(config) {
+					if (globalSakuraManager) {
+						globalSakuraManager.updateConfig(config);
+					} else {
+						globalSakuraManager = new SakuraManager(config);
+						if (config.enable) {
+							globalSakuraManager.init();
+						}
+					}
+				}
+
+				// 樱花特效初始化
+				(function() {
+					// 全局标记，确保樱花特效只初始化一次
+					if (window.sakuraInitialized) {
+						return;
+					}
+					
+					// 初始化樱花特效的函数
+					const setupSakura = () => {
+						if (sakuraConfig.enable && !window.sakuraInitialized) {
+							initSakura(sakuraConfig);
+							window.sakuraInitialized = true;
+						}
+					};
+					
+					// 页面加载完成后初始化樱花特效
+					if (document.readyState === 'loading') {
+						document.addEventListener('DOMContentLoaded', setupSakura);
+					} else {
+						setupSakura();
+					}
+				})();
+			</script>
+		)}
+		
 		<!-- Translate.js integration - lazy loading -->
 		{siteConfig.translate?.enable && (
 			<script>
@@ -269,6 +619,7 @@ const bannerOffset =
 </style>
 
 <script>
+import { animationManager } from '../utils/animation-utils';
 import 'overlayscrollbars/overlayscrollbars.css';
 import {
 	OverlayScrollbars,
@@ -377,8 +728,8 @@ function initCustomScrollbar() {
 			scrollbars: {
 				theme: 'scrollbar-base scrollbar-auto py-1',
 				autoHide: 'move',
-				autoHideDelay: 800,
-				autoHideSuspend: false,
+				autoHideDelay: 100,
+				autoHideSuspend: true,
 			},
 		});
 
@@ -738,6 +1089,19 @@ const setup = () => {
 				window.translate.execute();
 			}
 		}, 100);
+		
+		// 重新初始化semifull模式的滚动检测
+		const navbar = document.getElementById('navbar')
+		if (navbar) {
+			const transparentMode = navbar.getAttribute('data-transparent-mode')
+			
+			if (transparentMode === 'semifull') {
+				// 重新调用初始化函数来重新绑定滚动事件
+				if (typeof window.initSemifullScrollDetection === 'function') {
+					window.initSemifullScrollDetection()
+				}
+			}
+		}
 	})
 	window.swup.hooks.on('visit:start', (visit: {to: {url: string}}) => {
 		// change banner height immediately when a link is clicked
@@ -757,6 +1121,21 @@ const setup = () => {
 				bannerTextOverlay.classList.remove('hidden')
 			} else {
 				bannerTextOverlay.classList.add('hidden')
+			}
+		}
+
+		// Control navbar transparency based on page
+		const navbar = document.getElementById('navbar')
+		if (navbar) {
+			navbar.setAttribute('data-is-home', isHomePage.toString())
+			
+			// 重新初始化semifull模式的滚动检测
+			const transparentMode = navbar.getAttribute('data-transparent-mode')
+			if (transparentMode === 'semifull') {
+				// 重新调用初始化函数来重新绑定滚动事件
+				if (typeof window.initSemifullScrollDetection === 'function') {
+					window.initSemifullScrollDetection()
+				}
 			}
 		}
 
@@ -807,6 +1186,21 @@ const setup = () => {
 			top: 0,
 			behavior: 'instant'
 		});
+		
+		// 检查当前页面是否为文章页面，如果是则触发自定义事件用于初始化评论系统
+		setTimeout(() => {
+			if (document.getElementById('tcomment')) {
+				// 触发自定义事件，通知评论系统页面已完全加载
+				const pageLoadedEvent = new CustomEvent('mizuki:page:loaded', {
+					detail: {
+						path: window.location.pathname,
+						timestamp: Date.now()
+					}
+				});
+				document.dispatchEvent(pageLoadedEvent);
+				console.log('Layout: 触发 mizuki:page:loaded 事件，路径:', window.location.pathname);
+			}
+		}, 300);
 	});
 	window.swup.hooks.on('visit:end', (_visit: {to: {url: string}}) => {
 		setTimeout(() => {
@@ -901,13 +1295,12 @@ import PhotoSwipeLightbox from "photoswipe/lightbox"
 import "photoswipe/style.css"
 
 let lightbox: PhotoSwipeLightbox
-let pswp = import("photoswipe")
 
 function createPhotoSwipe() {
 	lightbox = new PhotoSwipeLightbox({
 		gallery: ".custom-md img, #post-cover img, .moment-images img",
-		pswpModule: () => pswp,
-		closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z"/></svg>',
+		pswpModule: () => import("photoswipe"),
+		closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 11-28t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z"/></svg>',
 		zoomSVG: '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#ffffff"><path d="M340-540h-40q-17 0-28.5-11.5T260-580q0-17 11.5-28.5T300-620h40v-40q0-17 11.5-28.5T380-700q17 0 28.5 11.5T420-660v40h40q17 0 28.5 11.5T500-580q0 17-11.5 28.5T460-540h-40v40q0 17-11.5 28.5T380-460q-17 0-28.5-11.5T340-500v-40Zm40 220q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l224 224q11 11 11 28t-11 28q-11 11-28 11t-28-11L532-372q-30 24-69 38t-83 14Zm0-80q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></svg>',
 		padding: { top: 20, bottom: 20, left: 20, right: 20 },
 		wheelToZoom: true,
@@ -918,6 +1311,7 @@ function createPhotoSwipe() {
 		doubleTapAction: 'zoom',
 	})
 
+	// Add filter BEFORE lightbox is initialized
 	lightbox.addFilter("domItemData", (itemData, element) => {
 		if (element instanceof HTMLImageElement) {
 			itemData.src = element.src
@@ -931,7 +1325,8 @@ function createPhotoSwipe() {
 		return itemData
 	})
 
-	(lightbox as any).init()
+	// Initialize lightbox AFTER adding filters
+	lightbox.init()
 }
 
 const setup = () => {
@@ -969,4 +1364,218 @@ setTimeout(() => {
 }, 1000);
 }
 
+</script>
+
+<script>
+// 全局相册功能 - 重构版本
+class GalleryManager {
+	constructor() {
+		this.isInitialized = false;
+		this.clickHandler = null;
+	}
+
+	init() {
+		console.log('GalleryManager init called');
+		
+		// 防止重复初始化
+		if (this.isInitialized) {
+			console.log('GalleryManager already initialized, skipping');
+			return;
+		}
+		
+		// 检查是否在相册页面
+		const galleryGroups = document.querySelectorAll('.gallery-group');
+		console.log('Found gallery groups:', galleryGroups.length);
+		if (galleryGroups.length === 0) {
+			console.log('No gallery groups found, skipping initialization');
+			return;
+		}
+
+		// 清理之前的监听器
+		this.cleanup();
+
+		// 创建新的点击处理器
+		console.log('Adding click event listener to document');
+		this.clickHandler = (e) => this.handleClick(e);
+		document.addEventListener('click', this.clickHandler);
+		this.isInitialized = true;
+		console.log('GalleryManager initialized successfully');
+	}
+
+	cleanup() {
+		if (this.clickHandler) {
+			document.removeEventListener('click', this.clickHandler);
+			this.clickHandler = null;
+		}
+		this.isInitialized = false;
+	}
+
+	handleClick(e) {
+		console.log('GalleryManager handleClick triggered', e.target);
+		
+		// 处理相册头部点击（展开/折叠）
+		const galleryHeader = e.target.closest('.gallery-header');
+		if (galleryHeader) {
+			console.log('Gallery header clicked', galleryHeader);
+			e.preventDefault();
+			e.stopPropagation(); // 防止事件冲突，确保相册展开功能正常工作
+			this.toggleGallery(galleryHeader);
+			return;
+		}
+
+		// 处理图片点击（查看大图）
+		const galleryImage = e.target.closest('.gallery-image');
+		if (galleryImage) {
+			console.log('Gallery image clicked', galleryImage);
+			e.preventDefault();
+			e.stopPropagation(); // 防止事件冲突
+			const imageSrc = galleryImage.getAttribute('data-image');
+			if (imageSrc) {
+				this.showImageModal(imageSrc);
+			}
+		}
+	}
+
+	toggleGallery(header) {
+		console.log('toggleGallery called', header);
+		const group = header.closest('.gallery-group');
+		const content = group.querySelector('.gallery-content');
+		const icon = header.querySelector('.expand-icon');
+		
+		console.log('Found elements:', { group, content, icon });
+		console.log('Content hidden?', content?.classList.contains('hidden'));
+
+		if (content && content.classList.contains('hidden')) {
+			// 展开
+			console.log('Expanding gallery');
+			content.classList.remove('hidden');
+			group.classList.add('expanded');
+			if (icon) icon.style.transform = 'rotate(180deg)';
+		} else if (content) {
+			// 折叠
+			console.log('Collapsing gallery');
+			content.classList.add('hidden');
+			group.classList.remove('expanded');
+			if (icon) icon.style.transform = 'rotate(0deg)';
+		} else {
+			console.error('Gallery content not found!');
+		}
+	}
+
+	showImageModal(imageSrc) {
+		// 创建模态框元素
+		const modal = document.createElement('div');
+		modal.className = 'gallery-modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4';
+		modal.style.opacity = '0';
+		modal.style.transition = 'opacity 0.3s ease';
+		modal.style.borderRadius = '12px';
+		
+		const modalContent = document.createElement('div');
+		modalContent.className = 'relative max-w-full max-h-full';
+		modalContent.style.borderRadius = '12px';
+		modalContent.style.overflow = 'hidden';
+		
+		const img = document.createElement('img');
+		img.src = imageSrc;
+		img.alt = '查看图片';
+		img.className = 'max-w-full max-h-full object-contain rounded-lg';
+		img.style.transform = 'scale(0.9)';
+		img.style.transition = 'transform 0.3s ease';
+		img.style.borderRadius = '12px';
+		
+		const closeBtn = document.createElement('button');
+		closeBtn.className = 'close-btn absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors';
+		closeBtn.innerHTML = `
+			<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+			</svg>
+		`;
+		
+		modalContent.appendChild(img);
+		modalContent.appendChild(closeBtn);
+		modal.appendChild(modalContent);
+		document.body.appendChild(modal);
+		
+		// 显示动画
+		requestAnimationFrame(() => {
+			modal.style.opacity = '1';
+			img.style.transform = 'scale(1)';
+		});
+		
+		// 事件处理
+		const closeModal = () => {
+			modal.style.opacity = '0';
+			img.style.transform = 'scale(0.9)';
+			setTimeout(() => {
+				if (document.body.contains(modal)) {
+					document.body.removeChild(modal);
+				}
+				document.removeEventListener('keydown', handleEsc);
+			}, 300);
+		};
+		
+		const handleEsc = (e) => {
+			if (e.key === 'Escape') closeModal();
+		};
+		
+		closeBtn.addEventListener('click', closeModal);
+		modal.addEventListener('click', (e) => {
+			if (e.target === modal) closeModal();
+		});
+		document.addEventListener('keydown', handleEsc);
+	}
+
+
+}
+
+// 创建全局相册管理器实例
+window.galleryManager = new GalleryManager();
+
+// 相册初始化函数
+const initGallery = () => {
+	console.log('initGallery called');
+	// 在页面切换时，需要重置初始化状态以允许重新初始化
+	if (window.location.pathname.includes('/gallery')) {
+		window.galleryManager.isInitialized = false;
+	}
+	window.galleryManager.init();
+};
+
+// Swup集成
+let isGallerySetupComplete = false;
+const setupGalleryWithSwup = () => {
+	if (isGallerySetupComplete) return;
+	
+	initGallery();
+	
+	if (window.swup) {
+		window.swup.hooks.on("page:view", () => {
+			// 页面切换后重新初始化，增加延迟确保DOM完全加载
+			setTimeout(() => {
+				console.log('Layout: Swup page:view - reinitializing gallery');
+				initGallery();
+			}, 200);
+		});
+		
+		window.swup.hooks.on("content:replace", () => {
+			// 页面内容替换前清理
+			console.log('Layout: Swup content:replace - cleaning up gallery');
+			window.galleryManager.cleanup();
+		}, { before: true });
+	}
+	
+	isGallerySetupComplete = true;
+};
+
+// 初始化
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', setupGalleryWithSwup);
+} else {
+	setupGalleryWithSwup();
+}
+
+// Swup启用时的处理
+if (!window.swup) {
+	document.addEventListener("swup:enable", setupGalleryWithSwup);
+}
 </script>
